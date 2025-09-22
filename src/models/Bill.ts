@@ -4,7 +4,8 @@ const billSchema = new Schema({
   sn: { type: String, required: true },
   name: { type: String, required: true },
   amtPaid: { type: String, default: "0" },
-  school: { type: String, required: true },
+  school: { type: String, default: "" },
+  academicYear: { type: String, default: "" },
   schoolType: {
     type: String,
     enum: ['primary', 'secondary', 'university'],
@@ -22,6 +23,11 @@ const billSchema = new Schema({
   university1stSemester: { type: String, default: "" },
   university2ndSemester: { type: String, default: "" },
   // Metadata
+  paymentDate: { type: Date },
+  payments: [{
+    amount: { type: Number, required: true },
+    date: { type: Date, required: true }
+  }],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 }, {

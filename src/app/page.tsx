@@ -6,6 +6,7 @@ import { saveBills, getBillById, getAllBills } from '@/lib/billsService';
 import { BillRow } from '@/types/bill'; // Import the correct type
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 interface AcademicYearGroup {
   academicYear: string;
@@ -15,6 +16,7 @@ interface AcademicYearGroup {
 
 export default function HomePage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [rows, setRows] = useState<BillRow[]>([]);
   const [academicYearGroups, setAcademicYearGroups] = useState<AcademicYearGroup[]>([]);
@@ -195,16 +197,23 @@ export default function HomePage() {
         return;
       }
 
-      // Validate required fields
-      const invalidRows = rows.filter(row => !row.name || !row.school || !row.academicYear);
-      if (invalidRows.length > 0) {
-        alert('Please fill in all required fields (Name, School, and Academic Year) for all rows.');
-        return;
-      }
-
+      // Removed strict validation to allow saving incomplete rows
       console.log('Saving rows:', rows); // Debugging
       setLoading(true);
-      const result = await saveBills(rows);
+      // Normalize empty numeric fields to '0' so zeros are saved
+      const normalizedRows = rows.map((r) => ({
+        ...r,
+        amtPaid: r.amtPaid === '' ? '0' : r.amtPaid,
+        primary1stTerm: r.primary1stTerm === '' ? '0' : r.primary1stTerm,
+        primary2ndTerm: r.primary2ndTerm === '' ? '0' : r.primary2ndTerm,
+        primary3rdTerm: r.primary3rdTerm === '' ? '0' : r.primary3rdTerm,
+        secondary1stTerm: r.secondary1stTerm === '' ? '0' : r.secondary1stTerm,
+        secondary2ndTerm: r.secondary2ndTerm === '' ? '0' : r.secondary2ndTerm,
+        secondary3rdTerm: r.secondary3rdTerm === '' ? '0' : r.secondary3rdTerm,
+        university1stSemester: r.university1stSemester === '' ? '0' : r.university1stSemester,
+        university2ndSemester: r.university2ndSemester === '' ? '0' : r.university2ndSemester,
+      }));
+      const result = await saveBills(normalizedRows);
       
       console.log('Save result from server:', result); // Debugging
       
@@ -233,6 +242,7 @@ export default function HomePage() {
         console.log('New rows after processing save result:', newRows); // Debugging
         setRows(newRows);
         alert('Bills saved successfully! Data remains on this page for continued editing.');
+        window.location.reload();
       } else {
         console.error('Invalid response structure:', result);
         // Don't clear data, just show a warning
@@ -296,7 +306,7 @@ export default function HomePage() {
           { key: "2ndSemester", label: "2nd Semester", width: "w-28" },
           { key: "currentBill", label: "Current Bill", width: "w-28" },
           { key: "amtPaid", label: "Paid", width: "w-28" },
-          { key: "status", label: "Status", width: "w-24" },
+          { key: "remaining", label: "Remaining", width: "w-28" },
           { key: "actions", label: "", width: "w-16" }
         ]
       : [
@@ -308,13 +318,13 @@ export default function HomePage() {
           { key: "3rdTerm", label: "3rd Term", width: "w-28" },
           { key: "currentBill", label: "Current Bill", width: "w-28" },
           { key: "amtPaid", label: "Paid", width: "w-28" },
-          { key: "status", label: "Status", width: "w-24" },
+          { key: "remaining", label: "Remaining", width: "w-28" },
           { key: "actions", label: "", width: "w-16" }
         ];
 
     return (
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-4">
-        <div className={`bg-gradient-to-r from-${colorScheme.bg}-50 to-${colorScheme.bg}-100 px-6 py-3 border-b border-gray-200`}>
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-visible mb-4">
+        <div className={`sticky top-0 z-20 bg-gradient-to-r from-${colorScheme.bg}-50 to-${colorScheme.bg}-100 px-6 py-3 border-b border-gray-200` }>
           <div className="flex items-center justify-between">
             <h3 className={`text-md font-semibold text-${colorScheme.text}-800 flex items-center gap-2`}>
               <div className={`w-5 h-5 bg-${colorScheme.bg}-600 rounded-full flex items-center justify-center`}>
@@ -385,9 +395,12 @@ export default function HomePage() {
                           <div className="relative">
                             <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
                             <input
-                              type="number"
+                              type="text"
+                              inputMode="decimal"
                               value={row.university1stSemester}
                               onChange={(e) => updateRow(globalIndex, 'university1stSemester', e.target.value)}
+                              onFocus={(e) => { if (e.target.value === '0') e.target.value = ''; }}
+                              onBlur={(e) => { if (e.target.value.trim() === '') updateRow(globalIndex, 'university1stSemester', '0'); }}
                               className={`w-full pl-6 pr-2 py-1.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-xs text-gray-900`}
                               placeholder="0"
                             />
@@ -397,9 +410,12 @@ export default function HomePage() {
                           <div className="relative">
                             <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
                             <input
-                              type="number"
+                              type="text"
+                              inputMode="decimal"
                               value={row.university2ndSemester}
                               onChange={(e) => updateRow(globalIndex, 'university2ndSemester', e.target.value)}
+                              onFocus={(e) => { if (e.target.value === '0') e.target.value = ''; }}
+                              onBlur={(e) => { if (e.target.value.trim() === '') updateRow(globalIndex, 'university2ndSemester', '0'); }}
                               className={`w-full pl-6 pr-2 py-1.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-xs text-gray-900`}
                               placeholder="0"
                             />
@@ -412,9 +428,12 @@ export default function HomePage() {
                           <div className="relative">
                             <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
                             <input
-                              type="number"
+                              type="text"
+                              inputMode="decimal"
                               value={schoolType === 'primary' ? row.primary1stTerm : row.secondary1stTerm}
                               onChange={(e) => updateRow(globalIndex, schoolType === 'primary' ? 'primary1stTerm' : 'secondary1stTerm', e.target.value)}
+                              onFocus={(e) => { if (e.target.value === '0') e.target.value = ''; }}
+                              onBlur={(e) => { if (e.target.value.trim() === '') updateRow(globalIndex, schoolType === 'primary' ? 'primary1stTerm' : 'secondary1stTerm', '0'); }}
                               className={`w-full pl-6 pr-2 py-1.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-xs text-gray-900`}
                               placeholder="0"
                             />
@@ -424,9 +443,12 @@ export default function HomePage() {
                           <div className="relative">
                             <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
                             <input
-                              type="number"
+                              type="text"
+                              inputMode="decimal"
                               value={schoolType === 'primary' ? row.primary2ndTerm : row.secondary2ndTerm}
                               onChange={(e) => updateRow(globalIndex, schoolType === 'primary' ? 'primary2ndTerm' : 'secondary2ndTerm', e.target.value)}
+                              onFocus={(e) => { if (e.target.value === '0') e.target.value = ''; }}
+                              onBlur={(e) => { if (e.target.value.trim() === '') updateRow(globalIndex, schoolType === 'primary' ? 'primary2ndTerm' : 'secondary2ndTerm', '0'); }}
                               className={`w-full pl-6 pr-2 py-1.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-xs text-gray-900`}
                               placeholder="0"
                             />
@@ -436,9 +458,12 @@ export default function HomePage() {
                           <div className="relative">
                             <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
                             <input
-                              type="number"
+                              type="text"
+                              inputMode="decimal"
                               value={schoolType === 'primary' ? row.primary3rdTerm : row.secondary3rdTerm}
                               onChange={(e) => updateRow(globalIndex, schoolType === 'primary' ? 'primary3rdTerm' : 'secondary3rdTerm', e.target.value)}
+                              onFocus={(e) => { if (e.target.value === '0') e.target.value = ''; }}
+                              onBlur={(e) => { if (e.target.value.trim() === '') updateRow(globalIndex, schoolType === 'primary' ? 'primary3rdTerm' : 'secondary3rdTerm', '0'); }}
                               className={`w-full pl-6 pr-2 py-1.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-xs text-gray-900`}
                               placeholder="0"
                             />
@@ -459,25 +484,26 @@ export default function HomePage() {
                       <div className="relative">
                         <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           value={row.amtPaid}
                           onChange={(e) => updateRow(globalIndex, 'amtPaid', e.target.value)}
+                          onFocus={(e) => { if (e.target.value === '0') e.target.value = ''; }}
+                          onBlur={(e) => { if (e.target.value.trim() === '') updateRow(globalIndex, 'amtPaid', '0'); }}
                           className={`w-full pl-6 pr-2 py-1.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-xs text-gray-900`}
                           placeholder="0"
                         />
                       </div>
                     </td>
                     <td className="px-3 py-2 border-b border-gray-100">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        isPaid 
-                          ? 'bg-green-100 text-green-800' 
-                          : outstanding > 0 
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {isPaid ? 'Paid' : outstanding > 0 ? 'Pending' : 'N/A'}
-                      </span>
+                      <div className="relative">
+                        <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
+                        <div className={`w-full pl-6 pr-2 py-1.5 border rounded-md text-xs flex items-center ${outstanding > 0 ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-700'}`}>
+                          {(outstanding > 0 ? outstanding : 0).toLocaleString()}
+                        </div>
+                      </div>
                     </td>
+                    {/* Status column removed per requirements */}
                     <td className="px-3 py-2 border-b border-gray-100">
                       <button
                         onClick={() => deleteRow(globalIndex)}

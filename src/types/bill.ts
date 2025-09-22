@@ -21,4 +21,6 @@ export interface BillRow {
   university2ndSemester: string;
   createdAt?: Date;
   updatedAt?: Date;
+  paymentDate?: string; // ISO string when payment was made
+  payments?: { amount: number; date: string }[]; // history of payments
 }
