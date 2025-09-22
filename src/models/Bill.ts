@@ -22,11 +22,21 @@ const billSchema = new Schema({
   // University semesters
   university1stSemester: { type: String, default: "" },
   university2ndSemester: { type: String, default: "" },
+  // Assistance amounts per period (what client paid)
+  assistPrimary1stTerm: { type: String, default: "" },
+  assistPrimary2ndTerm: { type: String, default: "" },
+  assistPrimary3rdTerm: { type: String, default: "" },
+  assistSecondary1stTerm: { type: String, default: "" },
+  assistSecondary2ndTerm: { type: String, default: "" },
+  assistSecondary3rdTerm: { type: String, default: "" },
+  assistUniversity1stSemester: { type: String, default: "" },
+  assistUniversity2ndSemester: { type: String, default: "" },
   // Metadata
   paymentDate: { type: Date },
   payments: [{
     amount: { type: Number, required: true },
-    date: { type: Date, required: true }
+    date: { type: Date, required: true },
+    period: { type: String }
   }],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }

@@ -21,7 +21,62 @@ export async function GET(request: Request) {
     }
 
     const bills = await Bill.find(query).sort({ createdAt: -1 });
-    return NextResponse.json({ success: true, data: bills });
+    // Normalize assist defaults for client display (no summing from payments)
+    const mapped = await Promise.all(bills.map(async (b: any) => {
+      const doc = b.toObject ? b.toObject() : b;
+      const ensure = (v: any) => (v === undefined || v === null || v === '' ? '0' : String(v));
+      let a1 = ensure(doc.assistPrimary1stTerm);
+      let a2 = ensure(doc.assistPrimary2ndTerm);
+      let a3 = ensure(doc.assistPrimary3rdTerm);
+      let s1 = ensure(doc.assistSecondary1stTerm);
+      let s2 = ensure(doc.assistSecondary2ndTerm);
+      let s3 = ensure(doc.assistSecondary3rdTerm);
+      let u1 = ensure(doc.assistUniversity1stSemester);
+      let u2 = ensure(doc.assistUniversity2ndSemester);
+
+      const allZero = [a1,a2,a3,s1,s2,s3,u1,u2].every(v => (parseFloat(v) || 0) === 0);
+      const amtPaidNum = parseFloat(doc.amtPaid || '0') || 0;
+      if (allZero && amtPaidNum > 0) {
+        // Migration: place amtPaid into the first applicable period based on schoolType
+        if (doc.schoolType === 'primary') {
+          a1 = String(amtPaidNum);
+        } else if (doc.schoolType === 'secondary') {
+          s1 = String(amtPaidNum);
+        } else if (doc.schoolType === 'university') {
+          u1 = String(amtPaidNum);
+        }
+        // Persist once so it becomes stable
+        try {
+          await Bill.findByIdAndUpdate(doc._id, {
+            $set: {
+              assistPrimary1stTerm: a1,
+              assistPrimary2ndTerm: a2,
+              assistPrimary3rdTerm: a3,
+              assistSecondary1stTerm: s1,
+              assistSecondary2ndTerm: s2,
+              assistSecondary3rdTerm: s3,
+              assistUniversity1stSemester: u1,
+              assistUniversity2ndSemester: u2,
+            }
+          }, { new: false });
+        } catch (e) {
+          console.warn('Assist migration update failed for', doc._id, e);
+        }
+      }
+
+      return {
+        ...doc,
+        assistPrimary1stTerm: a1,
+        assistPrimary2ndTerm: a2,
+        assistPrimary3rdTerm: a3,
+        assistSecondary1stTerm: s1,
+        assistSecondary2ndTerm: s2,
+        assistSecondary3rdTerm: s3,
+        assistUniversity1stSemester: u1,
+        assistUniversity2ndSemester: u2,
+      };
+    }));
+    return NextResponse.json({ success: true, data: mapped });
   } catch (error) {
     console.error('Error fetching bills:', error);
     return NextResponse.json(
@@ -51,43 +106,42 @@ export async function POST(request: Request) {
       
       console.log(`Processing bill ${index + 1}: ${bill.name}, _id: ${_id}`);
       
+      // Helper: detect if any assist increased
+      function anyAssistIncreased(existing: any, incoming: any) {
+        const keys = [
+          'assistPrimary1stTerm','assistPrimary2ndTerm','assistPrimary3rdTerm',
+          'assistSecondary1stTerm','assistSecondary2ndTerm','assistSecondary3rdTerm',
+          'assistUniversity1stSemester','assistUniversity2ndSemester'
+        ];
+        return keys.some((k) => {
+          const prev = parseFloat(existing?.[k] || '0') || 0;
+          const next = parseFloat(incoming?.[k] || '0') || 0;
+          return next > prev;
+        });
+      }
+      
       // If we have a MongoDB _id, validate it first and then update
       if (_id) {
-        // CRITICAL FIX: Only proceed if _id is a valid MongoDB ObjectId
         if (isValidObjectId(_id)) {
-          console.log('Valid ObjectId detected, attempting update:', _id);
           try {
             const existing = await Bill.findById(_id);
             const updateData: any = { ...billData };
-            // Auto-set paymentDate when amtPaid increases or becomes > 0
             const prevPaid = parseFloat(existing?.amtPaid || '0') || 0;
             const nextPaid = parseFloat(billData?.amtPaid || '0') || 0;
-            const delta = nextPaid - prevPaid;
-            if (nextPaid > 0 && nextPaid !== prevPaid) {
+            if ((nextPaid > 0 && nextPaid !== prevPaid) || anyAssistIncreased(existing, billData)) {
               updateData.paymentDate = new Date();
-            }
-            const updateOps: any = { $set: updateData };
-            if (delta > 0) {
-              updateOps.$push = { payments: { amount: delta, date: new Date() } };
             }
             const updatedBill = await Bill.findByIdAndUpdate(
               _id,
-              updateOps,
+              { $set: updateData },
               { new: true, runValidators: true }
             );
             if (updatedBill) {
-              console.log('Successfully updated bill:', _id);
               return updatedBill;
-            } else {
-              console.log('Bill not found with ObjectId, will create new:', _id);
             }
           } catch (updateError) {
             console.error('Error updating bill with ObjectId:', _id, updateError);
-            // Continue to create new bill logic below
           }
-        } else {
-          console.log('Invalid/temporary _id detected, ignoring:', _id);
-          // Continue to create new bill logic below
         }
       }
       
@@ -99,44 +153,29 @@ export async function POST(request: Request) {
       });
 
       if (existingBill) {
-        console.log('Found existing bill by name/school/year, updating:', existingBill._id);
-        // Update existing bill
         const updateData: any = { ...billData };
         const prevPaid = parseFloat(existingBill.amtPaid || '0') || 0;
         const nextPaid = parseFloat(billData?.amtPaid || '0') || 0;
-        const delta = nextPaid - prevPaid;
-        if (nextPaid > 0 && nextPaid !== prevPaid) {
+        if ((nextPaid > 0 && nextPaid !== prevPaid) || anyAssistIncreased(existingBill, billData)) {
           updateData.paymentDate = new Date();
-        }
-        const updateOps: any = { $set: updateData };
-        if (delta > 0) {
-          updateOps.$push = { payments: { amount: delta, date: new Date() } };
         }
         const updatedBill = await Bill.findByIdAndUpdate(
           existingBill._id,
-          updateOps,
+          { $set: updateData },
           { new: true, runValidators: true }
         );
         return updatedBill;
       } else {
-        // Generate new serial number for new bills
         const newSn = String(Number(lastSn) + index + 1).padStart(3, '0');
-        
-        console.log('Creating new bill with sn:', newSn);
-        
-        // Create new bill
         const createData: any = {
           ...billData,
           sn: newSn
         };
         const nextPaid = parseFloat(billData?.amtPaid || '0') || 0;
-        if (nextPaid > 0) {
+        if (nextPaid > 0 || anyAssistIncreased({}, billData)) {
           createData.paymentDate = new Date();
-          createData.payments = [{ amount: nextPaid, date: new Date() }];
         }
         const newBill = await Bill.create(createData);
-        
-        console.log('Created new bill:', newBill._id);
         return newBill;
       }
     });

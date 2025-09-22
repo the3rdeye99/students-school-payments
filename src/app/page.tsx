@@ -69,6 +69,14 @@ export default function HomePage() {
           secondary3rdTerm: bill.secondary3rdTerm || "",
           university1stSemester: bill.university1stSemester || "",
           university2ndSemester: bill.university2ndSemester || "",
+          assistPrimary1stTerm: bill.assistPrimary1stTerm || "0",
+          assistPrimary2ndTerm: bill.assistPrimary2ndTerm || "0",
+          assistPrimary3rdTerm: bill.assistPrimary3rdTerm || "0",
+          assistSecondary1stTerm: bill.assistSecondary1stTerm || "0",
+          assistSecondary2ndTerm: bill.assistSecondary2ndTerm || "0",
+          assistSecondary3rdTerm: bill.assistSecondary3rdTerm || "0",
+          assistUniversity1stSemester: bill.assistUniversity1stSemester || "0",
+          assistUniversity2ndSemester: bill.assistUniversity2ndSemester || "0",
         }));
         console.log('Processed bill data:', billData); // Debugging
         setRows(billData);
@@ -110,6 +118,14 @@ export default function HomePage() {
           secondary3rdTerm: bill.secondary3rdTerm || "",
           university1stSemester: bill.university1stSemester || "",
           university2ndSemester: bill.university2ndSemester || "",
+          assistPrimary1stTerm: bill.assistPrimary1stTerm || "0",
+          assistPrimary2ndTerm: bill.assistPrimary2ndTerm || "0",
+          assistPrimary3rdTerm: bill.assistPrimary3rdTerm || "0",
+          assistSecondary1stTerm: bill.assistSecondary1stTerm || "0",
+          assistSecondary2ndTerm: bill.assistSecondary2ndTerm || "0",
+          assistSecondary3rdTerm: bill.assistSecondary3rdTerm || "0",
+          assistUniversity1stSemester: bill.assistUniversity1stSemester || "0",
+          assistUniversity2ndSemester: bill.assistUniversity2ndSemester || "0",
         };
         setRows([billData]);
       }
@@ -173,7 +189,15 @@ export default function HomePage() {
       secondary2ndTerm: "",
       secondary3rdTerm: "",
       university1stSemester: "",
-      university2ndSemester: ""
+      university2ndSemester: "",
+      assistPrimary1stTerm: "0",
+      assistPrimary2ndTerm: "0",
+      assistPrimary3rdTerm: "0",
+      assistSecondary1stTerm: "0",
+      assistSecondary2ndTerm: "0",
+      assistSecondary3rdTerm: "0",
+      assistUniversity1stSemester: "0",
+      assistUniversity2ndSemester: "0",
     };
     console.log('Adding new row:', newRow); // Debugging
     setRows([...rows, newRow]);
@@ -203,7 +227,24 @@ export default function HomePage() {
       // Normalize empty numeric fields to '0' so zeros are saved
       const normalizedRows = rows.map((r) => ({
         ...r,
-        amtPaid: r.amtPaid === '' ? '0' : r.amtPaid,
+        // Compute amtPaid from assist fields per school type
+        amtPaid: (() => {
+          if (r.schoolType === 'primary') {
+            const a1 = parseFloat(r.assistPrimary1stTerm || '0') || 0;
+            const a2 = parseFloat(r.assistPrimary2ndTerm || '0') || 0;
+            const a3 = parseFloat(r.assistPrimary3rdTerm || '0') || 0;
+            return String(a1 + a2 + a3);
+          }
+          if (r.schoolType === 'secondary') {
+            const a1 = parseFloat(r.assistSecondary1stTerm || '0') || 0;
+            const a2 = parseFloat(r.assistSecondary2ndTerm || '0') || 0;
+            const a3 = parseFloat(r.assistSecondary3rdTerm || '0') || 0;
+            return String(a1 + a2 + a3);
+          }
+          const u1 = parseFloat(r.assistUniversity1stSemester || '0') || 0;
+          const u2 = parseFloat(r.assistUniversity2ndSemester || '0') || 0;
+          return String(u1 + u2);
+        })(),
         primary1stTerm: r.primary1stTerm === '' ? '0' : r.primary1stTerm,
         primary2ndTerm: r.primary2ndTerm === '' ? '0' : r.primary2ndTerm,
         primary3rdTerm: r.primary3rdTerm === '' ? '0' : r.primary3rdTerm,
@@ -212,6 +253,14 @@ export default function HomePage() {
         secondary3rdTerm: r.secondary3rdTerm === '' ? '0' : r.secondary3rdTerm,
         university1stSemester: r.university1stSemester === '' ? '0' : r.university1stSemester,
         university2ndSemester: r.university2ndSemester === '' ? '0' : r.university2ndSemester,
+        assistPrimary1stTerm: r.assistPrimary1stTerm === '' ? '0' : r.assistPrimary1stTerm,
+        assistPrimary2ndTerm: r.assistPrimary2ndTerm === '' ? '0' : r.assistPrimary2ndTerm,
+        assistPrimary3rdTerm: r.assistPrimary3rdTerm === '' ? '0' : r.assistPrimary3rdTerm,
+        assistSecondary1stTerm: r.assistSecondary1stTerm === '' ? '0' : r.assistSecondary1stTerm,
+        assistSecondary2ndTerm: r.assistSecondary2ndTerm === '' ? '0' : r.assistSecondary2ndTerm,
+        assistSecondary3rdTerm: r.assistSecondary3rdTerm === '' ? '0' : r.assistSecondary3rdTerm,
+        assistUniversity1stSemester: r.assistUniversity1stSemester === '' ? '0' : r.assistUniversity1stSemester,
+        assistUniversity2ndSemester: r.assistUniversity2ndSemester === '' ? '0' : r.assistUniversity2ndSemester,
       }));
       const result = await saveBills(normalizedRows);
       
@@ -237,6 +286,14 @@ export default function HomePage() {
           secondary3rdTerm: bill.secondary3rdTerm || "",
           university1stSemester: bill.university1stSemester || "",
           university2ndSemester: bill.university2ndSemester || "",
+          assistPrimary1stTerm: bill.assistPrimary1stTerm || "0",
+          assistPrimary2ndTerm: bill.assistPrimary2ndTerm || "0",
+          assistPrimary3rdTerm: bill.assistPrimary3rdTerm || "0",
+          assistSecondary1stTerm: bill.assistSecondary1stTerm || "0",
+          assistSecondary2ndTerm: bill.assistSecondary2ndTerm || "0",
+          assistSecondary3rdTerm: bill.assistSecondary3rdTerm || "0",
+          assistUniversity1stSemester: bill.assistUniversity1stSemester || "0",
+          assistUniversity2ndSemester: bill.assistUniversity2ndSemester || "0",
         }));
         
         console.log('New rows after processing save result:', newRows); // Debugging
@@ -297,6 +354,13 @@ export default function HomePage() {
       university: { bg: 'purple', text: 'purple' }
     }[schoolType];
 
+    const sectionOutstanding = filteredRows.reduce((sum, row) => {
+      const current = calculateCurrentBill(row);
+      const paid = parseFloat(row.amtPaid) || 0;
+      const outstanding = current - paid;
+      return sum + (outstanding > 0 ? outstanding : 0);
+    }, 0);
+
     const tableHeaders = schoolType === 'university' 
       ? [
           { key: "sn", label: "S/N", width: "w-16" },
@@ -356,7 +420,21 @@ export default function HomePage() {
               {filteredRows.map((row, rowIdx) => {
                 const globalIndex = rows.findIndex(r => r === row); // Find the actual index in the full array
                 const currentBill = calculateCurrentBill(row);
-                const outstanding = currentBill - (parseFloat(row.amtPaid) || 0);
+                const assistPaid = (() => {
+                  if (row.schoolType === 'primary') {
+                    return (parseFloat(row.assistPrimary1stTerm || '0') || 0) +
+                           (parseFloat(row.assistPrimary2ndTerm || '0') || 0) +
+                           (parseFloat(row.assistPrimary3rdTerm || '0') || 0);
+                  }
+                  if (row.schoolType === 'secondary') {
+                    return (parseFloat(row.assistSecondary1stTerm || '0') || 0) +
+                           (parseFloat(row.assistSecondary2ndTerm || '0') || 0) +
+                           (parseFloat(row.assistSecondary3rdTerm || '0') || 0);
+                  }
+                  return (parseFloat(row.assistUniversity1stSemester || '0') || 0) +
+                         (parseFloat(row.assistUniversity2ndSemester || '0') || 0);
+                })();
+                const outstanding = currentBill - assistPaid;
                 const isPaid = outstanding <= 0 && row.amtPaid && currentBill > 0;
                 
                 // Use a stable key - prefer _id if available, fallback to globalIndex
@@ -405,6 +483,19 @@ export default function HomePage() {
                               placeholder="0"
                             />
                           </div>
+                          <div className="relative mt-1">
+                            <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={row.assistUniversity1stSemester || '0'}
+                              onChange={(e) => updateRow(globalIndex, 'assistUniversity1stSemester', e.target.value)}
+                              onFocus={(e) => { if (e.target.value === '0') e.target.value = ''; }}
+                              onBlur={(e) => { if (e.target.value.trim() === '') updateRow(globalIndex, 'assistUniversity1stSemester', '0'); }}
+                              className={`w-full pl-6 pr-2 py-1 border border-gray-200 rounded-md focus:ring-1 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-[11px] text-gray-900 bg-${colorScheme.bg}-50/30`}
+                              placeholder="Assist"
+                            />
+                          </div>
                         </td>
                         <td className="px-3 py-2 border-b border-gray-100">
                           <div className="relative">
@@ -418,6 +509,19 @@ export default function HomePage() {
                               onBlur={(e) => { if (e.target.value.trim() === '') updateRow(globalIndex, 'university2ndSemester', '0'); }}
                               className={`w-full pl-6 pr-2 py-1.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-xs text-gray-900`}
                               placeholder="0"
+                            />
+                          </div>
+                          <div className="relative mt-1">
+                            <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={row.assistUniversity2ndSemester || '0'}
+                              onChange={(e) => updateRow(globalIndex, 'assistUniversity2ndSemester', e.target.value)}
+                              onFocus={(e) => { if (e.target.value === '0') e.target.value = ''; }}
+                              onBlur={(e) => { if (e.target.value.trim() === '') updateRow(globalIndex, 'assistUniversity2ndSemester', '0'); }}
+                              className={`w-full pl-6 pr-2 py-1 border border-gray-200 rounded-md focus:ring-1 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-[11px] text-gray-900 bg-${colorScheme.bg}-50/30`}
+                              placeholder="Assist"
                             />
                           </div>
                         </td>
@@ -438,6 +542,19 @@ export default function HomePage() {
                               placeholder="0"
                             />
                           </div>
+                          <div className="relative mt-1">
+                            <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={schoolType === 'primary' ? (row.assistPrimary1stTerm || '0') : (row.assistSecondary1stTerm || '0')}
+                              onChange={(e) => updateRow(globalIndex, schoolType === 'primary' ? 'assistPrimary1stTerm' : 'assistSecondary1stTerm', e.target.value)}
+                              onFocus={(e) => { if (e.target.value === '0') e.target.value = ''; }}
+                              onBlur={(e) => { if (e.target.value.trim() === '') updateRow(globalIndex, schoolType === 'primary' ? 'assistPrimary1stTerm' : 'assistSecondary1stTerm', '0'); }}
+                              className={`w-full pl-6 pr-2 py-1 border border-gray-200 rounded-md focus:ring-1 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-[11px] text-gray-900 bg-${colorScheme.bg}-50/30`}
+                              placeholder="Assist"
+                            />
+                          </div>
                         </td>
                         <td className="px-3 py-2 border-b border-gray-100">
                           <div className="relative">
@@ -451,6 +568,19 @@ export default function HomePage() {
                               onBlur={(e) => { if (e.target.value.trim() === '') updateRow(globalIndex, schoolType === 'primary' ? 'primary2ndTerm' : 'secondary2ndTerm', '0'); }}
                               className={`w-full pl-6 pr-2 py-1.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-xs text-gray-900`}
                               placeholder="0"
+                            />
+                          </div>
+                          <div className="relative mt-1">
+                            <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={schoolType === 'primary' ? (row.assistPrimary2ndTerm || '0') : (row.assistSecondary2ndTerm || '0')}
+                              onChange={(e) => updateRow(globalIndex, schoolType === 'primary' ? 'assistPrimary2ndTerm' : 'assistSecondary2ndTerm', e.target.value)}
+                              onFocus={(e) => { if (e.target.value === '0') e.target.value = ''; }}
+                              onBlur={(e) => { if (e.target.value.trim() === '') updateRow(globalIndex, schoolType === 'primary' ? 'assistPrimary2ndTerm' : 'assistSecondary2ndTerm', '0'); }}
+                              className={`w-full pl-6 pr-2 py-1 border border-gray-200 rounded-md focus:ring-1 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-[11px] text-gray-900 bg-${colorScheme.bg}-50/30`}
+                              placeholder="Assist"
                             />
                           </div>
                         </td>
@@ -468,6 +598,19 @@ export default function HomePage() {
                               placeholder="0"
                             />
                           </div>
+                          <div className="relative mt-1">
+                            <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={schoolType === 'primary' ? (row.assistPrimary3rdTerm || '0') : (row.assistSecondary3rdTerm || '0')}
+                              onChange={(e) => updateRow(globalIndex, schoolType === 'primary' ? 'assistPrimary3rdTerm' : 'assistSecondary3rdTerm', e.target.value)}
+                              onFocus={(e) => { if (e.target.value === '0') e.target.value = ''; }}
+                              onBlur={(e) => { if (e.target.value.trim() === '') updateRow(globalIndex, schoolType === 'primary' ? 'assistPrimary3rdTerm' : 'assistSecondary3rdTerm', '0'); }}
+                              className={`w-full pl-6 pr-2 py-1 border border-gray-200 rounded-md focus:ring-1 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-[11px] text-gray-900 bg-${colorScheme.bg}-50/30`}
+                              placeholder="Assist"
+                            />
+                          </div>
                         </td>
                       </>
                     )}
@@ -481,18 +624,8 @@ export default function HomePage() {
                       </div>
                     </td>
                     <td className="px-3 py-2 border-b border-gray-100">
-                      <div className="relative">
-                        <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          value={row.amtPaid}
-                          onChange={(e) => updateRow(globalIndex, 'amtPaid', e.target.value)}
-                          onFocus={(e) => { if (e.target.value === '0') e.target.value = ''; }}
-                          onBlur={(e) => { if (e.target.value.trim() === '') updateRow(globalIndex, 'amtPaid', '0'); }}
-                          className={`w-full pl-6 pr-2 py-1.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-xs text-gray-900`}
-                          placeholder="0"
-                        />
+                      <div className={`w-full pl-6 pr-2 py-1.5 border border-gray-200 rounded-md bg-gray-50 text-xs text-gray-900 flex items-center`}>
+                        {assistPaid.toLocaleString()}
                       </div>
                     </td>
                     <td className="px-3 py-2 border-b border-gray-100">
@@ -518,6 +651,12 @@ export default function HomePage() {
               })}
             </tbody>
           </table>
+        </div>
+        <div className="px-6 py-3 border-t border-gray-100 bg-white flex items-center justify-end">
+          <div className="text-sm font-semibold">
+            <span className="text-gray-700 mr-2">Total Outstanding:</span>
+            <span className="text-gray-900">₦{sectionOutstanding.toLocaleString()}</span>
+          </div>
         </div>
       </div>
     );

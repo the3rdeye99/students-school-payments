@@ -282,8 +282,11 @@ export default function PreviousBillsPage() {
                     { key: "studentName", label: "Student Name", width: "w-40" },
                     { key: "school", label: "School", width: "w-40" },
                     { key: "1stTerm", label: "1st Term", width: "w-28" },
+                    { key: "1stAssist", label: "Assist", width: "w-24" },
                     { key: "2ndTerm", label: "2nd Term", width: "w-28" },
+                    { key: "2ndAssist", label: "Assist", width: "w-24" },
                     { key: "3rdTerm", label: "3rd Term", width: "w-28" },
+                    { key: "3rdAssist", label: "Assist", width: "w-24" },
                     { key: "paid", label: "Paid", width: "w-28" },
                     { key: "total", label: "Total", width: "w-28" },
                     { key: "date", label: "Date", width: "w-32" }
@@ -316,10 +319,19 @@ export default function PreviousBillsPage() {
                         <span className="text-sm text-gray-900">₦{parseFloat(bill.primary1stTerm || '0').toLocaleString()}</span>
                       </td>
                       <td className="px-3 py-3 border-b border-gray-100">
+                        <span className="text-xs text-gray-700">₦{parseFloat(bill.assistPrimary1stTerm || '0').toLocaleString()}</span>
+                      </td>
+                      <td className="px-3 py-3 border-b border-gray-100">
                         <span className="text-sm text-gray-900">₦{parseFloat(bill.primary2ndTerm || '0').toLocaleString()}</span>
                       </td>
                       <td className="px-3 py-3 border-b border-gray-100">
+                        <span className="text-xs text-gray-700">₦{parseFloat(bill.assistPrimary2ndTerm || '0').toLocaleString()}</span>
+                      </td>
+                      <td className="px-3 py-3 border-b border-gray-100">
                         <span className="text-sm text-gray-900">₦{parseFloat(bill.primary3rdTerm || '0').toLocaleString()}</span>
+                      </td>
+                      <td className="px-3 py-3 border-b border-gray-100">
+                        <span className="text-xs text-gray-700">₦{parseFloat(bill.assistPrimary3rdTerm || '0').toLocaleString()}</span>
                       </td>
                       <td className="px-3 py-3 border-b border-gray-100">
                         <span className="text-sm text-gray-900">₦{parseFloat(bill.amtPaid || '0').toLocaleString()}</span>
@@ -393,8 +405,11 @@ export default function PreviousBillsPage() {
                     { key: "studentName", label: "Student Name", width: "w-40" },
                     { key: "school", label: "School", width: "w-40" },
                     { key: "1stTerm", label: "1st Term", width: "w-28" },
+                    { key: "1stAssist", label: "Assist", width: "w-24" },
                     { key: "2ndTerm", label: "2nd Term", width: "w-28" },
+                    { key: "2ndAssist", label: "Assist", width: "w-24" },
                     { key: "3rdTerm", label: "3rd Term", width: "w-28" },
+                    { key: "3rdAssist", label: "Assist", width: "w-24" },
                     { key: "paid", label: "Paid", width: "w-28" },
                     { key: "total", label: "Total", width: "w-28" },
                     { key: "date", label: "Date", width: "w-32" }
@@ -424,10 +439,19 @@ export default function PreviousBillsPage() {
                         <span className="text-sm text-gray-900">₦{parseFloat(bill.secondary1stTerm || '0').toLocaleString()}</span>
                       </td>
                       <td className="px-3 py-3 border-b border-gray-100">
+                        <span className="text-xs text-gray-700">₦{parseFloat(bill.assistSecondary1stTerm || '0').toLocaleString()}</span>
+                      </td>
+                      <td className="px-3 py-3 border-b border-gray-100">
                         <span className="text-sm text-gray-900">₦{parseFloat(bill.secondary2ndTerm || '0').toLocaleString()}</span>
                       </td>
                       <td className="px-3 py-3 border-b border-gray-100">
+                        <span className="text-xs text-gray-700">₦{parseFloat(bill.assistSecondary2ndTerm || '0').toLocaleString()}</span>
+                      </td>
+                      <td className="px-3 py-3 border-b border-gray-100">
                         <span className="text-sm text-gray-900">₦{parseFloat(bill.secondary3rdTerm || '0').toLocaleString()}</span>
+                      </td>
+                      <td className="px-3 py-3 border-b border-gray-100">
+                        <span className="text-xs text-gray-700">₦{parseFloat(bill.assistSecondary3rdTerm || '0').toLocaleString()}</span>
                       </td>
                       <td className="px-3 py-3 border-b border-gray-100">
                         <span className="text-sm text-gray-900">₦{parseFloat(bill.amtPaid || '0').toLocaleString()}</span>
@@ -501,7 +525,9 @@ export default function PreviousBillsPage() {
                     { key: "studentName", label: "Student Name", width: "w-40" },
                     { key: "school", label: "School", width: "w-40" },
                     { key: "1stSemester", label: "1st Semester", width: "w-28" },
+                    { key: "1stAssist", label: "Assist", width: "w-24" },
                     { key: "2ndSemester", label: "2nd Semester", width: "w-28" },
+                    { key: "2ndAssist", label: "Assist", width: "w-24" },
                     { key: "paid", label: "Paid", width: "w-28" },
                     { key: "total", label: "Total", width: "w-28" },
                     { key: "date", label: "Date", width: "w-32" }
@@ -531,7 +557,13 @@ export default function PreviousBillsPage() {
                         <span className="text-sm text-gray-900">₦{parseFloat(bill.university1stSemester || '0').toLocaleString()}</span>
                       </td>
                       <td className="px-3 py-3 border-b border-gray-100">
+                        <span className="text-xs text-gray-700">₦{parseFloat(bill.assistUniversity1stSemester || '0').toLocaleString()}</span>
+                      </td>
+                      <td className="px-3 py-3 border-b border-gray-100">
                         <span className="text-sm text-gray-900">₦{parseFloat(bill.university2ndSemester || '0').toLocaleString()}</span>
+                      </td>
+                      <td className="px-3 py-3 border-b border-gray-100">
+                        <span className="text-xs text-gray-700">₦{parseFloat(bill.assistUniversity2ndSemester || '0').toLocaleString()}</span>
                       </td>
                       <td className="px-3 py-3 border-b border-gray-100">
                         <span className="text-sm text-gray-900">₦{parseFloat(bill.amtPaid || '0').toLocaleString()}</span>
@@ -629,7 +661,7 @@ export function PaymentsModal({ bill, onClose }: { bill: BillRow | null; onClose
             <div className="space-y-3">
               {payments.map((p, idx) => (
                 <div key={idx} className="flex items-center justify-between text-sm">
-                  <span className="text-gray-700">{new Date(p.date).toLocaleString()}</span>
+                  <span className="text-gray-700">{new Date(p.date).toLocaleString()} {p.period ? `• ${p.period.replace('_', ' ').replace('primary','Primary').replace('secondary','Secondary').replace('university','University')}` : ''}</span>
                   <span className="font-medium text-gray-900">₦{(p.amount || 0).toLocaleString()}</span>
                 </div>
               ))}

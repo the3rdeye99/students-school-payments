@@ -19,8 +19,17 @@ export interface BillRow {
   // University semesters
   university1stSemester: string;
   university2ndSemester: string;
+  // Assistance amounts per period (what client paid)
+  assistPrimary1stTerm?: string;
+  assistPrimary2ndTerm?: string;
+  assistPrimary3rdTerm?: string;
+  assistSecondary1stTerm?: string;
+  assistSecondary2ndTerm?: string;
+  assistSecondary3rdTerm?: string;
+  assistUniversity1stSemester?: string;
+  assistUniversity2ndSemester?: string;
   createdAt?: Date;
   updatedAt?: Date;
   paymentDate?: string; // ISO string when payment was made
-  payments?: { amount: number; date: string }[]; // history of payments
+  payments?: { amount: number; date: string; period?: string }[]; // history of payments with optional period tag
 }
