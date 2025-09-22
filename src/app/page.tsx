@@ -1,49 +1,90 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Upload, Plus, Save, Download, Search, Filter, Calculator, Users, Trash2, History } from 'lucide-react';
-import { saveBills, getBillById } from '@/lib/billsService';
+import { Upload, Plus, Save, Download, Search, Filter, Calculator, Users, Trash2, History, ChevronDown, ChevronUp } from 'lucide-react';
+import { saveBills, getBillById, getAllBills } from '@/lib/billsService';
+import { BillRow } from '@/types/bill'; // Import the correct type
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
-interface BillRow {
-  id: number;
-  sn: string;
-  name: string;
-  amtPaid: string;
-  school: string;
-  schoolType: 'primary' | 'secondary' | 'university';
+interface AcademicYearGroup {
   academicYear: string;
-  // Primary school terms
-  primary1stTerm: string;
-  primary2ndTerm: string;
-  primary3rdTerm: string;
-  // Secondary school terms
-  secondary1stTerm: string;
-  secondary2ndTerm: string;
-  secondary3rdTerm: string;
-  // University semesters
-  university1stSemester: string;
-  university2ndSemester: string;
+  rows: BillRow[];
+  isExpanded: boolean;
 }
-
-
 
 export default function HomePage() {
   const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [rows, setRows] = useState<BillRow[]>([]);
+  const [academicYearGroups, setAcademicYearGroups] = useState<AcademicYearGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const currentYear = new Date().getFullYear();
   const nextYear = currentYear + 1;
   const defaultAcademicYear = `${currentYear}/${nextYear}`;
 
+  // Debugging effect to monitor state changes
+  useEffect(() => {
+    console.log('Rows state changed:', rows.length, rows);
+  }, [rows]);
+
   useEffect(() => {
     const billId = searchParams.get('billId');
     if (billId) {
       loadBill(billId);
+    } else {
+      // Load all existing bills on initial load
+      loadAllBills();
     }
   }, [searchParams]);
+
+  // Group rows by academic year whenever rows change
+  useEffect(() => {
+    groupRowsByAcademicYear();
+  }, [rows]);
+
+  const loadAllBills = async () => {
+    try {
+      setLoading(true);
+      const bills = await getAllBills();
+      console.log('Loaded bills from server:', bills); // Debugging
+      
+      if (bills && bills.length > 0) {
+        const billData: BillRow[] = bills.map((bill: any, index: number) => ({
+          id: undefined, // Let the server manage IDs
+          _id: bill._id,
+          sn: bill.sn || String(index + 1).padStart(3, '0'),
+          name: bill.name || '',
+          amtPaid: bill.amtPaid || '',
+          school: bill.school || '',
+          schoolType: bill.schoolType || 'primary',
+          academicYear: bill.academicYear || defaultAcademicYear,
+          primary1stTerm: bill.primary1stTerm || "",
+          primary2ndTerm: bill.primary2ndTerm || "",
+          primary3rdTerm: bill.primary3rdTerm || "",
+          secondary1stTerm: bill.secondary1stTerm || "",
+          secondary2ndTerm: bill.secondary2ndTerm || "",
+          secondary3rdTerm: bill.secondary3rdTerm || "",
+          university1stSemester: bill.university1stSemester || "",
+          university2ndSemester: bill.university2ndSemester || "",
+        }));
+        console.log('Processed bill data:', billData); // Debugging
+        setRows(billData);
+      } else {
+        // If no bills exist, start with empty state
+        console.log('No bills found, starting with empty state');
+        setRows([]);
+      }
+    } catch (error) {
+      console.error('Error loading bills:', error);
+      // Don't clear existing data on load error
+      if (rows.length === 0) {
+        console.log('No existing data, starting fresh due to load error');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadBill = async (billId: string) => {
     try {
@@ -51,7 +92,8 @@ export default function HomePage() {
       const bill = await getBillById(billId);
       if (bill) {
         const billData: BillRow = {
-          id: bill._id,
+          id: undefined, // Let the server manage IDs
+          _id: bill._id,
           sn: bill.sn,
           name: bill.name,
           amtPaid: bill.amtPaid,
@@ -77,15 +119,51 @@ export default function HomePage() {
     }
   };
 
-  const addRow = (schoolType: 'primary' | 'secondary' | 'university' = 'primary') => {
+  const groupRowsByAcademicYear = () => {
+    const groups = new Map<string, BillRow[]>();
+    
+    rows.forEach(row => {
+      const year = row.academicYear || defaultAcademicYear;
+      if (!groups.has(year)) {
+        groups.set(year, []);
+      }
+      groups.get(year)!.push(row);
+    });
+
+    const sortedGroups: AcademicYearGroup[] = Array.from(groups.entries())
+      .map(([academicYear, groupRows]) => ({
+        academicYear,
+        rows: groupRows,
+        isExpanded: true // Default to expanded
+      }))
+      .sort((a, b) => b.academicYear.localeCompare(a.academicYear)); // Most recent first
+
+    setAcademicYearGroups(sortedGroups);
+  };
+
+  const toggleAcademicYearExpansion = (academicYear: string) => {
+    setAcademicYearGroups(groups => 
+      groups.map(group => 
+        group.academicYear === academicYear 
+          ? { ...group, isExpanded: !group.isExpanded }
+          : group
+      )
+    );
+  };
+
+  const addRow = (schoolType: 'primary' | 'secondary' | 'university' = 'primary', academicYear: string = defaultAcademicYear) => {
+    // Generate a unique temporary ID for new rows
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
     const newRow: BillRow = {
-      id: rows.length + 1,
+      id: undefined, // Let the server assign the ID
+      _id: tempId, // Use temp ID for React key stability until saved
       sn: String(rows.length + 1).padStart(3, '0'),
       name: "",
       amtPaid: "",
       school: "",
       schoolType: schoolType,
-      academicYear: defaultAcademicYear,
+      academicYear: academicYear,
       primary1stTerm: "",
       primary2ndTerm: "",
       primary3rdTerm: "",
@@ -95,17 +173,19 @@ export default function HomePage() {
       university1stSemester: "",
       university2ndSemester: ""
     };
+    console.log('Adding new row:', newRow); // Debugging
     setRows([...rows, newRow]);
   };
 
-  const updateRow = (id: number, field: keyof BillRow, value: string) => {
-    setRows(rows.map(row => 
-      row.id === id ? { ...row, [field]: value } : row
+  const updateRow = (index: number, field: keyof BillRow, value: string) => {
+    setRows(prevRows => prevRows.map((row, i) => 
+      i === index ? { ...row, [field]: value } : row
     ));
   };
 
-  const deleteRow = (id: number) => {
-    setRows(rows.filter(row => row.id !== id));
+  const deleteRow = (index: number) => {
+    console.log('Deleting row at index:', index); // Debugging
+    setRows(rows.filter((_, i) => i !== index));
   };
 
   const handleSave = async () => {
@@ -122,33 +202,48 @@ export default function HomePage() {
         return;
       }
 
+      console.log('Saving rows:', rows); // Debugging
+      setLoading(true);
       const result = await saveBills(rows);
       
-      // Success case - update the rows with the returned data
-      const updatedBills = result.data;
-      setRows(updatedBills.map((bill: any) => ({
-        id: bill._id, // Use MongoDB _id as the row id
-        _id: bill._id, // Keep _id for updates
-        sn: bill.sn || '',
-        name: bill.name || '',
-        amtPaid: bill.amtPaid || '',
-        school: bill.school || '',
-        schoolType: bill.schoolType || 'primary',
-        academicYear: bill.academicYear || defaultAcademicYear,
-        primary1stTerm: bill.primary1stTerm || "",
-        primary2ndTerm: bill.primary2ndTerm || "",
-        primary3rdTerm: bill.primary3rdTerm || "",
-        secondary1stTerm: bill.secondary1stTerm || "",
-        secondary2ndTerm: bill.secondary2ndTerm || "",
-        secondary3rdTerm: bill.secondary3rdTerm || "",
-        university1stSemester: bill.university1stSemester || "",
-        university2ndSemester: bill.university2ndSemester || "",
-      })));
+      console.log('Save result from server:', result); // Debugging
       
-      alert('Bills saved successfully!');
+      // Success case - update the rows with the returned data
+      if (result && result.data && Array.isArray(result.data)) {
+        const updatedBills = result.data;
+        const newRows = updatedBills.map((bill: any, index: number) => ({
+          id: undefined, // Let server manage IDs
+          _id: bill._id,
+          sn: bill.sn || String(index + 1).padStart(3, '0'),
+          name: bill.name || '',
+          amtPaid: bill.amtPaid || '',
+          school: bill.school || '',
+          schoolType: bill.schoolType || 'primary',
+          academicYear: bill.academicYear || defaultAcademicYear,
+          primary1stTerm: bill.primary1stTerm || "",
+          primary2ndTerm: bill.primary2ndTerm || "",
+          primary3rdTerm: bill.primary3rdTerm || "",
+          secondary1stTerm: bill.secondary1stTerm || "",
+          secondary2ndTerm: bill.secondary2ndTerm || "",
+          secondary3rdTerm: bill.secondary3rdTerm || "",
+          university1stSemester: bill.university1stSemester || "",
+          university2ndSemester: bill.university2ndSemester || "",
+        }));
+        
+        console.log('New rows after processing save result:', newRows); // Debugging
+        setRows(newRows);
+        alert('Bills saved successfully! Data remains on this page for continued editing.');
+      } else {
+        console.error('Invalid response structure:', result);
+        // Don't clear data, just show a warning
+        alert('Bills may have been saved, but response format was unexpected. Please refresh to see current data.');
+      }
     } catch (error: any) {
       console.error('Error saving bills:', error);
       alert(error.message || 'Failed to save bills. Please try again.');
+      // Don't clear the data on error - keep the current state
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -181,6 +276,227 @@ export default function HomePage() {
   const totalPaid = rows.reduce((sum, row) => sum + (parseFloat(row.amtPaid) || 0), 0);
   const totalOutstanding = totalCurrentBill - totalPaid;
 
+  // Render table for specific school type and academic year
+  const renderTable = (schoolType: 'primary' | 'secondary' | 'university', academicYear: string, groupRows: BillRow[]) => {
+    const filteredRows = groupRows.filter(row => row.schoolType === schoolType);
+    if (filteredRows.length === 0) return null;
+
+    const colorScheme = {
+      primary: { bg: 'blue', text: 'blue' },
+      secondary: { bg: 'green', text: 'green' },
+      university: { bg: 'purple', text: 'purple' }
+    }[schoolType];
+
+    const tableHeaders = schoolType === 'university' 
+      ? [
+          { key: "sn", label: "S/N", width: "w-16" },
+          { key: "name", label: "Name", width: "w-40" },
+          { key: "school", label: "School", width: "w-40" },
+          { key: "1stSemester", label: "1st Semester", width: "w-28" },
+          { key: "2ndSemester", label: "2nd Semester", width: "w-28" },
+          { key: "currentBill", label: "Current Bill", width: "w-28" },
+          { key: "amtPaid", label: "Paid", width: "w-28" },
+          { key: "status", label: "Status", width: "w-24" },
+          { key: "actions", label: "", width: "w-16" }
+        ]
+      : [
+          { key: "sn", label: "S/N", width: "w-16" },
+          { key: "name", label: "Name", width: "w-40" },
+          { key: "school", label: "School", width: "w-40" },
+          { key: "1stTerm", label: "1st Term", width: "w-28" },
+          { key: "2ndTerm", label: "2nd Term", width: "w-28" },
+          { key: "3rdTerm", label: "3rd Term", width: "w-28" },
+          { key: "currentBill", label: "Current Bill", width: "w-28" },
+          { key: "amtPaid", label: "Paid", width: "w-28" },
+          { key: "status", label: "Status", width: "w-24" },
+          { key: "actions", label: "", width: "w-16" }
+        ];
+
+    return (
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-4">
+        <div className={`bg-gradient-to-r from-${colorScheme.bg}-50 to-${colorScheme.bg}-100 px-6 py-3 border-b border-gray-200`}>
+          <div className="flex items-center justify-between">
+            <h3 className={`text-md font-semibold text-${colorScheme.text}-800 flex items-center gap-2`}>
+              <div className={`w-5 h-5 bg-${colorScheme.bg}-600 rounded-full flex items-center justify-center`}>
+                <span className="text-white text-xs font-bold">{schoolType.charAt(0).toUpperCase()}</span>
+              </div>
+              {schoolType.charAt(0).toUpperCase() + schoolType.slice(1)} School Students
+            </h3>
+            <button 
+              onClick={() => addRow(schoolType, academicYear)}
+              className={`flex items-center gap-2 bg-${colorScheme.bg}-500 text-white px-3 py-1.5 rounded-lg hover:bg-${colorScheme.bg}-600 transition-colors shadow-md text-sm`}
+            >
+              <Plus className="w-3 h-3" />
+              Add {schoolType.charAt(0).toUpperCase() + schoolType.slice(1)}
+            </button>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+              <tr>
+                {tableHeaders.map((col, idx) => (
+                  <th key={idx} className={`${col.width} px-3 py-2 text-left font-semibold text-gray-800 border-b border-gray-200 text-xs`}>
+                    {col.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRows.map((row, rowIdx) => {
+                const globalIndex = rows.findIndex(r => r === row); // Find the actual index in the full array
+                const currentBill = calculateCurrentBill(row);
+                const outstanding = currentBill - (parseFloat(row.amtPaid) || 0);
+                const isPaid = outstanding <= 0 && row.amtPaid && currentBill > 0;
+                
+                // Use a stable key - prefer _id if available, fallback to globalIndex
+                const stableKey = row._id || `row-${globalIndex}`;
+                
+                return (
+                  <tr key={stableKey} className={`hover:bg-${colorScheme.bg}-50 transition-colors group`}>
+                    <td className="px-3 py-2 border-b border-gray-100">
+                      <div className={`w-14 h-6 bg-${colorScheme.bg}-100 rounded-md flex items-center justify-center text-xs font-medium text-${colorScheme.text}-700`}>
+                        {row.sn}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 border-b border-gray-100">
+                      <input
+                        type="text"
+                        value={row.name}
+                        onChange={(e) => updateRow(globalIndex, 'name', e.target.value)}
+                        className={`w-full p-1.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-sm text-gray-900`}
+                        placeholder="Enter student name"
+                      />
+                    </td>
+                    <td className="px-3 py-2 border-b border-gray-100">
+                      <input
+                        type="text"
+                        value={row.school}
+                        onChange={(e) => updateRow(globalIndex, 'school', e.target.value)}
+                        className={`w-full p-1.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-sm text-gray-900`}
+                        placeholder="School name"
+                      />
+                    </td>
+                    
+                    {/* Render term/semester fields based on school type */}
+                    {schoolType === 'university' ? (
+                      <>
+                        <td className="px-3 py-2 border-b border-gray-100">
+                          <div className="relative">
+                            <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
+                            <input
+                              type="number"
+                              value={row.university1stSemester}
+                              onChange={(e) => updateRow(globalIndex, 'university1stSemester', e.target.value)}
+                              className={`w-full pl-6 pr-2 py-1.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-xs text-gray-900`}
+                              placeholder="0"
+                            />
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 border-b border-gray-100">
+                          <div className="relative">
+                            <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
+                            <input
+                              type="number"
+                              value={row.university2ndSemester}
+                              onChange={(e) => updateRow(globalIndex, 'university2ndSemester', e.target.value)}
+                              className={`w-full pl-6 pr-2 py-1.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-xs text-gray-900`}
+                              placeholder="0"
+                            />
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-3 py-2 border-b border-gray-100">
+                          <div className="relative">
+                            <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
+                            <input
+                              type="number"
+                              value={schoolType === 'primary' ? row.primary1stTerm : row.secondary1stTerm}
+                              onChange={(e) => updateRow(globalIndex, schoolType === 'primary' ? 'primary1stTerm' : 'secondary1stTerm', e.target.value)}
+                              className={`w-full pl-6 pr-2 py-1.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-xs text-gray-900`}
+                              placeholder="0"
+                            />
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 border-b border-gray-100">
+                          <div className="relative">
+                            <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
+                            <input
+                              type="number"
+                              value={schoolType === 'primary' ? row.primary2ndTerm : row.secondary2ndTerm}
+                              onChange={(e) => updateRow(globalIndex, schoolType === 'primary' ? 'primary2ndTerm' : 'secondary2ndTerm', e.target.value)}
+                              className={`w-full pl-6 pr-2 py-1.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-xs text-gray-900`}
+                              placeholder="0"
+                            />
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 border-b border-gray-100">
+                          <div className="relative">
+                            <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
+                            <input
+                              type="number"
+                              value={schoolType === 'primary' ? row.primary3rdTerm : row.secondary3rdTerm}
+                              onChange={(e) => updateRow(globalIndex, schoolType === 'primary' ? 'primary3rdTerm' : 'secondary3rdTerm', e.target.value)}
+                              className={`w-full pl-6 pr-2 py-1.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-xs text-gray-900`}
+                              placeholder="0"
+                            />
+                          </div>
+                        </td>
+                      </>
+                    )}
+                    
+                    <td className="px-3 py-2 border-b border-gray-100">
+                      <div className="relative">
+                        <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
+                        <div className="w-full pl-6 pr-2 py-1.5 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-900 flex items-center">
+                          {currentBill.toLocaleString()}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 border-b border-gray-100">
+                      <div className="relative">
+                        <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
+                        <input
+                          type="number"
+                          value={row.amtPaid}
+                          onChange={(e) => updateRow(globalIndex, 'amtPaid', e.target.value)}
+                          className={`w-full pl-6 pr-2 py-1.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-${colorScheme.bg}-500 focus:border-transparent transition-all text-xs text-gray-900`}
+                          placeholder="0"
+                        />
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 border-b border-gray-100">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        isPaid 
+                          ? 'bg-green-100 text-green-800' 
+                          : outstanding > 0 
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {isPaid ? 'Paid' : outstanding > 0 ? 'Pending' : 'N/A'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 border-b border-gray-100">
+                      <button
+                        onClick={() => deleteRow(globalIndex)}
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors group"
+                        title="Delete row"
+                      >
+                        <Trash2 className="w-3 h-3 group-hover:scale-110 transition-transform" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       {/* Header */}
@@ -212,10 +528,11 @@ export default function HomePage() {
               
               <button 
                 onClick={handleSave}
-                className="flex items-center gap-2 bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition-colors shadow-md"
+                disabled={loading}
+                className="flex items-center gap-2 bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition-colors shadow-md disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
-                Save
+                {loading ? 'Saving...' : 'Save'}
               </button>
               <button className="flex items-center gap-2 bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors shadow-md">
                 <Download className="w-4 h-4" />
@@ -294,489 +611,127 @@ export default function HomePage() {
           </div>
         </div>
 
-
-
-        {/* Primary School Table */}
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-6">
-          <div className="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-blue-800 flex items-center gap-2">
-                <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">P</span>
-                </div>
-                Primary School Students
-              </h2>
+        {/* Academic Year Sections */}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-lg text-gray-600">Loading bills...</div>
+          </div>
+        ) : academicYearGroups.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-md p-8 text-center text-gray-500 mb-6">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calculator className="w-8 h-8 text-blue-600" />
+            </div>
+            <h3 className="text-lg font-medium mb-2">No Bills Found</h3>
+            <p className="text-sm mb-4">Start by adding students for the current academic year {defaultAcademicYear}</p>
+            <div className="flex items-center justify-center gap-3">
               <button 
                 onClick={() => addRow('primary')}
-                className="flex items-center gap-2 bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 transition-colors shadow-md text-sm"
+                className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors shadow-md text-sm"
               >
                 <Plus className="w-4 h-4" />
                 Add Primary Student
               </button>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-                <tr>
-                  {[
-                    { key: "sn", label: "S/N", width: "w-16" },
-                    { key: "name", label: "Name", width: "w-40" },
-                    { key: "school", label: "School", width: "w-40" },
-                    { key: "1stTerm", label: "1st Term", width: "w-28" },
-                    { key: "2ndTerm", label: "2nd Term", width: "w-28" },
-                    { key: "3rdTerm", label: "3rd Term", width: "w-28" },
-                    { key: "currentBill", label: "Current Bill", width: "w-28" },
-                    { key: "amtPaid", label: "Paid", width: "w-28" },
-                    { key: "status", label: "Status", width: "w-24" },
-                    { key: "actions", label: "", width: "w-16" }
-                  ].map((col, idx) => (
-                    <th key={idx} className={`${col.width} px-3 py-3 text-left font-semibold text-gray-800 border-b border-gray-200 text-xs`}>
-                      {col.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.filter(row => row.schoolType === 'primary').map((row, rowIdx) => {
-                  const currentBill = calculateCurrentBill(row);
-                  const outstanding = currentBill - (parseFloat(row.amtPaid) || 0);
-                  const isPaid = outstanding <= 0 && row.amtPaid && currentBill > 0;
-                  
-                  return (
-                    <tr key={row.id} className="hover:bg-blue-50 transition-colors group">
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <div className="w-14 h-8 bg-blue-100 rounded-md flex items-center justify-center text-xs font-medium text-blue-700">
-                          {row.sn}
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <input
-                          type="text"
-                          value={row.name}
-                          onChange={(e) => updateRow(row.id, 'name', e.target.value)}
-                          className="w-full p-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm text-gray-900"
-                          placeholder="Enter student name"
-                        />
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <input
-                          type="text"
-                          value={row.school}
-                          onChange={(e) => updateRow(row.id, 'school', e.target.value)}
-                          className="w-full p-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm text-gray-900"
-                          placeholder="School name"
-                        />
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <div className="relative">
-                          <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
-                          <input
-                            type="number"
-                            value={row.primary1stTerm}
-                            onChange={(e) => updateRow(row.id, 'primary1stTerm', e.target.value)}
-                            className="w-full pl-6 pr-2 py-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-xs text-gray-900"
-                            placeholder="0"
-                          />
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <div className="relative">
-                          <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
-                          <input
-                            type="number"
-                            value={row.primary2ndTerm}
-                            onChange={(e) => updateRow(row.id, 'primary2ndTerm', e.target.value)}
-                            className="w-full pl-6 pr-2 py-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-xs text-gray-900"
-                            placeholder="0"
-                          />
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <div className="relative">
-                          <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
-                          <input
-                            type="number"
-                            value={row.primary3rdTerm}
-                            onChange={(e) => updateRow(row.id, 'primary3rdTerm', e.target.value)}
-                            className="w-full pl-6 pr-2 py-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-xs text-gray-900"
-                            placeholder="0"
-                          />
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <div className="relative">
-                          <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
-                          <div className="w-full pl-6 pr-2 py-2 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-900 flex items-center">
-                            {currentBill.toLocaleString()}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <div className="relative">
-                          <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
-                          <input
-                            type="number"
-                            value={row.amtPaid}
-                            onChange={(e) => updateRow(row.id, 'amtPaid', e.target.value)}
-                            className="w-full pl-6 pr-2 py-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-xs text-gray-900"
-                            placeholder="0"
-                          />
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          isPaid 
-                            ? 'bg-green-100 text-green-800' 
-                            : outstanding > 0 
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-gray-100 text-gray-600'
-                        }`}>
-                          {isPaid ? 'Paid' : outstanding > 0 ? 'Pending' : 'N/A'}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <button
-                          onClick={() => deleteRow(row.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors group"
-                          title="Delete row"
-                        >
-                          <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {rows.filter(row => row.schoolType === 'primary').length === 0 && (
-            <div className="p-8 text-center text-gray-500">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="w-8 h-8 text-blue-600" />
-              </div>
-              <p className="text-lg font-medium mb-2">No Primary School Students</p>
-              <p className="text-sm">Click "Add Primary" to add a new primary school student</p>
-            </div>
-          )}
-        </div>
-
-        {/* Secondary School Table */}
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-6">
-          <div className="bg-gradient-to-r from-green-50 to-green-100 px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-green-800 flex items-center gap-2">
-                <div className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">S</span>
-                </div>
-                Secondary School Students
-              </h2>
               <button 
                 onClick={() => addRow('secondary')}
-                className="flex items-center gap-2 bg-green-500 text-white px-3 py-2 rounded-lg hover:bg-green-600 transition-colors shadow-md text-sm"
+                className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors shadow-md text-sm"
               >
                 <Plus className="w-4 h-4" />
                 Add Secondary Student
               </button>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-                <tr>
-                  {[
-                    { key: "sn", label: "S/N", width: "w-16" },
-                    { key: "name", label: "Name", width: "w-40" },
-                    { key: "school", label: "School", width: "w-40" },
-                    { key: "1stTerm", label: "1st Term", width: "w-28" },
-                    { key: "2ndTerm", label: "2nd Term", width: "w-28" },
-                    { key: "3rdTerm", label: "3rd Term", width: "w-28" },
-                    { key: "currentBill", label: "Current Bill", width: "w-28" },
-                    { key: "amtPaid", label: "Paid", width: "w-28" },
-                    { key: "status", label: "Status", width: "w-24" },
-                    { key: "actions", label: "", width: "w-16" }
-                  ].map((col, idx) => (
-                    <th key={idx} className={`${col.width} px-3 py-3 text-left font-semibold text-gray-800 border-b border-gray-200 text-xs`}>
-                      {col.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.filter(row => row.schoolType === 'secondary').map((row, rowIdx) => {
-                  const currentBill = calculateCurrentBill(row);
-                  const outstanding = currentBill - (parseFloat(row.amtPaid) || 0);
-                  const isPaid = outstanding <= 0 && row.amtPaid && currentBill > 0;
-                  
-                  return (
-                    <tr key={row.id} className="hover:bg-green-50 transition-colors group">
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <div className="w-14 h-8 bg-green-100 rounded-md flex items-center justify-center text-xs font-medium text-green-700">
-                          {row.sn}
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <input
-                          type="text"
-                          value={row.name}
-                          onChange={(e) => updateRow(row.id, 'name', e.target.value)}
-                          className="w-full p-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all text-sm text-gray-900"
-                          placeholder="Enter student name"
-                        />
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <input
-                          type="text"
-                          value={row.school}
-                          onChange={(e) => updateRow(row.id, 'school', e.target.value)}
-                          className="w-full p-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all text-sm text-gray-900"
-                          placeholder="School name"
-                        />
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <div className="relative">
-                          <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
-                          <input
-                            type="number"
-                            value={row.secondary1stTerm}
-                            onChange={(e) => updateRow(row.id, 'secondary1stTerm', e.target.value)}
-                            className="w-full pl-6 pr-2 py-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all text-xs text-gray-900"
-                            placeholder="0"
-                          />
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <div className="relative">
-                          <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
-                          <input
-                            type="number"
-                            value={row.secondary2ndTerm}
-                            onChange={(e) => updateRow(row.id, 'secondary2ndTerm', e.target.value)}
-                            className="w-full pl-6 pr-2 py-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all text-xs text-gray-900"
-                            placeholder="0"
-                          />
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <div className="relative">
-                          <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
-                          <input
-                            type="number"
-                            value={row.secondary3rdTerm}
-                            onChange={(e) => updateRow(row.id, 'secondary3rdTerm', e.target.value)}
-                            className="w-full pl-6 pr-2 py-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all text-xs text-gray-900"
-                            placeholder="0"
-                          />
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <div className="relative">
-                          <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
-                          <div className="w-full pl-6 pr-2 py-2 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-900 flex items-center">
-                            {currentBill.toLocaleString()}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <div className="relative">
-                          <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
-                          <input
-                            type="number"
-                            value={row.amtPaid}
-                            onChange={(e) => updateRow(row.id, 'amtPaid', e.target.value)}
-                            className="w-full pl-6 pr-2 py-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all text-xs text-gray-900"
-                            placeholder="0"
-                          />
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          isPaid 
-                            ? 'bg-green-100 text-green-800' 
-                            : outstanding > 0 
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-gray-100 text-gray-600'
-                        }`}>
-                          {isPaid ? 'Paid' : outstanding > 0 ? 'Pending' : 'N/A'}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <button
-                          onClick={() => deleteRow(row.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors group"
-                          title="Delete row"
-                        >
-                          <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {rows.filter(row => row.schoolType === 'secondary').length === 0 && (
-            <div className="p-8 text-center text-gray-500">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="w-8 h-8 text-green-600" />
-              </div>
-              <p className="text-lg font-medium mb-2">No Secondary School Students</p>
-              <p className="text-sm">Click "Add Secondary" to add a new secondary school student</p>
-            </div>
-          )}
-        </div>
-
-        {/* University Table */}
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-6">
-          <div className="bg-gradient-to-r from-purple-50 to-purple-100 px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-purple-800 flex items-center gap-2">
-                <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">U</span>
-                </div>
-                University Students
-              </h2>
               <button 
                 onClick={() => addRow('university')}
-                className="flex items-center gap-2 bg-purple-500 text-white px-3 py-2 rounded-lg hover:bg-purple-600 transition-colors shadow-md text-sm"
+                className="flex items-center gap-2 bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors shadow-md text-sm"
               >
                 <Plus className="w-4 h-4" />
                 Add University Student
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-                <tr>
-                  {[
-                    { key: "sn", label: "S/N", width: "w-16" },
-                    { key: "name", label: "Name", width: "w-40" },
-                    { key: "school", label: "School", width: "w-40" },
-                    { key: "1stSemester", label: "1st Semester", width: "w-28" },
-                    { key: "2ndSemester", label: "2nd Semester", width: "w-28" },
-                    { key: "currentBill", label: "Current Bill", width: "w-28" },
-                    { key: "amtPaid", label: "Paid", width: "w-28" },
-                    { key: "status", label: "Status", width: "w-24" },
-                    { key: "actions", label: "", width: "w-16" }
-                  ].map((col, idx) => (
-                    <th key={idx} className={`${col.width} px-3 py-3 text-left font-semibold text-gray-800 border-b border-gray-200 text-xs`}>
-                      {col.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.filter(row => row.schoolType === 'university').map((row, rowIdx) => {
-                  const currentBill = calculateCurrentBill(row);
-                  const outstanding = currentBill - (parseFloat(row.amtPaid) || 0);
-                  const isPaid = outstanding <= 0 && row.amtPaid && currentBill > 0;
-                  
-                  return (
-                    <tr key={row.id} className="hover:bg-purple-50 transition-colors group">
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <div className="w-14 h-8 bg-purple-100 rounded-md flex items-center justify-center text-xs font-medium text-purple-700">
-                          {row.sn}
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <input
-                          type="text"
-                          value={row.name}
-                          onChange={(e) => updateRow(row.id, 'name', e.target.value)}
-                          className="w-full p-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-sm text-gray-900"
-                          placeholder="Enter student name"
-                        />
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <input
-                          type="text"
-                          value={row.school}
-                          onChange={(e) => updateRow(row.id, 'school', e.target.value)}
-                          className="w-full p-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-sm text-gray-900"
-                          placeholder="School name"
-                        />
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <div className="relative">
-                          <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
-                          <input
-                            type="number"
-                            value={row.university1stSemester}
-                            onChange={(e) => updateRow(row.id, 'university1stSemester', e.target.value)}
-                            className="w-full pl-6 pr-2 py-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-xs text-gray-900"
-                            placeholder="0"
-                          />
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <div className="relative">
-                          <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
-                          <input
-                            type="number"
-                            value={row.university2ndSemester}
-                            onChange={(e) => updateRow(row.id, 'university2ndSemester', e.target.value)}
-                            className="w-full pl-6 pr-2 py-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-xs text-gray-900"
-                            placeholder="0"
-                          />
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <div className="relative">
-                          <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
-                          <div className="w-full pl-6 pr-2 py-2 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-900 flex items-center">
-                            {currentBill.toLocaleString()}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <div className="relative">
-                          <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₦</span>
-                          <input
-                            type="number"
-                            value={row.amtPaid}
-                            onChange={(e) => updateRow(row.id, 'amtPaid', e.target.value)}
-                            className="w-full pl-6 pr-2 py-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-xs text-gray-900"
-                            placeholder="0"
-                          />
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          isPaid 
-                            ? 'bg-green-100 text-green-800' 
-                            : outstanding > 0 
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-gray-100 text-gray-600'
-                        }`}>
-                          {isPaid ? 'Paid' : outstanding > 0 ? 'Pending' : 'N/A'}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 border-b border-gray-100">
-                        <button
-                          onClick={() => deleteRow(row.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors group"
-                          title="Delete row"
-                        >
-                          <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {rows.filter(row => row.schoolType === 'university').length === 0 && (
-            <div className="p-8 text-center text-gray-500">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="w-8 h-8 text-purple-600" />
+        ) : (
+          academicYearGroups.map((group) => (
+            <div key={group.academicYear} className="mb-8">
+              {/* Academic Year Header */}
+              <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-t-xl shadow-lg">
+                <button
+                  onClick={() => toggleAcademicYearExpansion(group.academicYear)}
+                  className="w-full px-6 py-4 flex items-center justify-between text-white hover:bg-black hover:bg-opacity-10 transition-colors rounded-t-xl"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                      <Calculator className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <h2 className="text-xl font-bold">Academic Year {group.academicYear}</h2>
+                      <p className="text-sm text-indigo-100">
+                        {group.rows.length} student{group.rows.length !== 1 ? 's' : ''} • 
+                        {group.rows.filter(r => r.schoolType === 'primary').length} Primary • 
+                        {group.rows.filter(r => r.schoolType === 'secondary').length} Secondary • 
+                        {group.rows.filter(r => r.schoolType === 'university').length} University
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">
+                      ₦{group.rows.reduce((sum, row) => sum + calculateCurrentBill(row), 0).toLocaleString()}
+                    </span>
+                    {group.isExpanded ? (
+                      <ChevronUp className="w-5 h-5" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5" />
+                    )}
+                  </div>
+                </button>
               </div>
-              <p className="text-lg font-medium mb-2">No University Students</p>
-              <p className="text-sm">Click "Add University" to add a new university student</p>
+
+              {/* Academic Year Content */}
+              {group.isExpanded && (
+                <div className="bg-gray-50 rounded-b-xl shadow-lg p-6">
+                  {/* Quick Add Buttons for this Academic Year */}
+                  <div className="flex items-center gap-3 mb-6">
+                    <span className="text-sm font-medium text-gray-700">Quick Add:</span>
+                    <button 
+                      onClick={() => addRow('primary', group.academicYear)}
+                      className="flex items-center gap-1 bg-blue-500 text-white px-3 py-1.5 rounded-lg hover:bg-blue-600 transition-colors shadow-sm text-xs"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Primary
+                    </button>
+                    <button 
+                      onClick={() => addRow('secondary', group.academicYear)}
+                      className="flex items-center gap-1 bg-green-500 text-white px-3 py-1.5 rounded-lg hover:bg-green-600 transition-colors shadow-sm text-xs"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Secondary
+                    </button>
+                    <button 
+                      onClick={() => addRow('university', group.academicYear)}
+                      className="flex items-center gap-1 bg-purple-500 text-white px-3 py-1.5 rounded-lg hover:bg-purple-600 transition-colors shadow-sm text-xs"
+                    >
+                      <Plus className="w-3 h-3" />
+                      University
+                    </button>
+                  </div>
+
+                  {/* Tables for each school type */}
+                  {renderTable('primary', group.academicYear, group.rows)}
+                  {renderTable('secondary', group.academicYear, group.rows)}
+                  {renderTable('university', group.academicYear, group.rows)}
+
+                  {/* Empty state for this academic year */}
+                  {group.rows.length === 0 && (
+                    <div className="bg-white rounded-xl p-8 text-center text-gray-500">
+                      <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Users className="w-8 h-8 text-indigo-600" />
+                      </div>
+                      <p className="text-lg font-medium mb-2">No Students for {group.academicYear}</p>
+                      <p className="text-sm">Use the quick add buttons above to add students for this academic year</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          ))
+        )}
 
         {/* Summary Footer */}
         <div className="mt-6 bg-white rounded-xl shadow-md p-6 border border-gray-100">

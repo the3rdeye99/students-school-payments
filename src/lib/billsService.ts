@@ -10,10 +10,18 @@ export async function saveBills(bills: BillRow[]) {
       body: JSON.stringify(bills),
     });
 
-    const result = await response.json();
+    // Parse JSON first, with error handling
+    let result;
+    try {
+      result = await response.json();
+    } catch (parseError) {
+      console.error('Failed to parse response JSON:', parseError);
+      throw new Error('Invalid response from server');
+    }
 
+    // Check response status after we have the result
     if (!response.ok) {
-      throw new Error(result.error || 'Failed to save bills');
+      throw new Error(result?.error || result?.message || `HTTP error! status: ${response.status}`);
     }
 
     if (!result.success) {
@@ -27,14 +35,57 @@ export async function saveBills(bills: BillRow[]) {
   }
 }
 
+export async function getAllBills() {
+  try {
+    const response = await fetch('/api/bills', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    // Parse JSON with error handling
+    let result;
+    try {
+      result = await response.json();
+    } catch (parseError) {
+      console.error('Failed to parse response JSON:', parseError);
+      throw new Error('Invalid response from server');
+    }
+
+    if (!response.ok) {
+      throw new Error(result?.error || result?.message || `HTTP error! status: ${response.status}`);
+    }
+    
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to fetch bills');
+    }
+    
+    return result.data || [];
+  } catch (error) {
+    console.error('Error fetching all bills:', error);
+    throw new Error('Failed to fetch bills');
+  }
+}
+
 export async function getPreviousBills(academicYear?: string) {
   try {
     const queryParams = academicYear ? `?academicYear=${academicYear}` : '';
     const response = await fetch(`/api/bills${queryParams}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch bills');
+    
+    // Parse JSON with error handling
+    let result;
+    try {
+      result = await response.json();
+    } catch (parseError) {
+      console.error('Failed to parse response JSON:', parseError);
+      throw new Error('Invalid response from server');
     }
-    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result?.error || result?.message || `HTTP error! status: ${response.status}`);
+    }
+
     return result.data;
   } catch (error) {
     console.error('Error fetching bills:', error);
@@ -45,10 +96,20 @@ export async function getPreviousBills(academicYear?: string) {
 export async function getBillById(id: string) {
   try {
     const response = await fetch(`/api/bills/${id}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch bill');
+    
+    // Parse JSON with error handling
+    let result;
+    try {
+      result = await response.json();
+    } catch (parseError) {
+      console.error('Failed to parse response JSON:', parseError);
+      throw new Error('Invalid response from server');
     }
-    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result?.error || result?.message || `HTTP error! status: ${response.status}`);
+    }
+
     return result.data;
   } catch (error) {
     console.error('Error fetching bill:', error);
