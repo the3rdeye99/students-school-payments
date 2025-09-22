@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# School Bills
 
-## Getting Started
+## Overview
 
-First, run the development server:
+School Bills is a web application designed to manage student payments and billing records efficiently. It caters to Primary, Secondary, and University level students, providing a comprehensive solution for tracking fees, payments, and outstanding balances.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Features
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+*   Student Records Management: Add, edit, and delete student bill records.
+*   Automated Bill Calculation: Calculate bills based on school type and term/semester fees.
+*   Payment Tracking: Track payments received and outstanding balances.
+*   Previous Bills: View and manage historical billing data.
+*   Data Import/Export: Upload and export data using CSV files (Note: CSV upload may require further implementation).
+*   Search and Filter: Find student records using search and filter options.
+*   Summary Statistics: View total students, current bills, amount paid, and outstanding balance.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Technologies Used
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+*   [Next.js](https://nextjs.org/)
+*   [React](https://reactjs.org/)
+*   [Lucide React](https://lucide.dev/)
+*   [Mongoose](https://mongoosejs.com/)
+*   [MongoDB](https://www.mongodb.com/)
+*   [Tailwind CSS](https://tailwindcss.com/)
 
-## Learn More
+## Prerequisites
 
-To learn more about Next.js, take a look at the following resources:
+*   [Node.js](https://nodejs.org/) (version 18 or higher)
+*   [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/) or [pnpm](https://pnpm.io/)
+*   [MongoDB](https://www.mongodb.com/)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Installation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1.  `git clone <repository_url>`
+2.  `cd school-bills`
+3.  `npm install`
 
-## Deploy on Vercel
+## Configuration
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Environment Variables
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Create a `.env.local` file:
+
+*   `MONGODB_URI`: MongoDB database URI (e.g., `mongodb://localhost:27017/school-bills`)
+
+### Database Setup
+
+Configure `MONGODB_URI` to point to your MongoDB database.
+
+## Running the Application
+
+1.  `npm run dev`
+2.  Open `http://localhost:3000`
+
+## Building and Running for Production
+
+1.  `npm run build`
+2.  `npm run start`
+
+## Usage
+
+1.  Add Student Records: Use "Add Primary Student," "Add Secondary Student," or "Add University Student" buttons.
+2.  Edit Records: Modify table rows.
+3.  Save Bills: Click "Save."
+4.  View Previous Bills: Click "View Previous Bills."
+5.  Search and Filter: Use the search bar and filter button.
+
+## Contributing
+
+Contributions are welcome.
+
+## License
+
+[MIT](LICENSE)
+
