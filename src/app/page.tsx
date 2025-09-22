@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Upload, Plus, Save, Download, Search, Filter, Calculator, Users, Trash2, History, ChevronDown, ChevronUp } from 'lucide-react';
 import { saveBills, getBillById, getAllBills } from '@/lib/billsService';
 import { BillRow } from '@/types/bill'; // Import the correct type
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
+
+export const dynamic = 'force-dynamic';
 
 interface AcademicYearGroup {
   academicYear: string;
@@ -15,7 +16,6 @@ interface AcademicYearGroup {
 }
 
 export default function HomePage() {
-  const searchParams = useSearchParams();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [rows, setRows] = useState<BillRow[]>([]);
@@ -31,14 +31,18 @@ export default function HomePage() {
   }, [rows]);
 
   useEffect(() => {
-    const billId = searchParams.get('billId');
+    let billId: string | null = null;
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search);
+      billId = sp.get('billId');
+    }
     if (billId) {
       loadBill(billId);
     } else {
       // Load all existing bills on initial load
       loadAllBills();
     }
-  }, [searchParams]);
+  }, []);
 
   // Group rows by academic year whenever rows change
   useEffect(() => {
@@ -663,6 +667,7 @@ export default function HomePage() {
   };
 
   return (
+    <Suspense fallback={null}>
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       {/* Header */}
       <header className="bg-white shadow-lg border-b border-gray-200">
@@ -928,5 +933,6 @@ export default function HomePage() {
         </div>
       </div>
     </div>
+    </Suspense>
   );
 }
