@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { connectDB } from '@/lib/mongodb-local';
+import connectDB from '@/lib/mongodb';
 import Bill from '@/models/Bill';
 import type { BillRow } from '@/types/bill';
 import mongoose from 'mongoose';

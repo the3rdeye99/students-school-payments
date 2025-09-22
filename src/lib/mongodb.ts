@@ -11,7 +11,7 @@ declare global {
   var mongoose: MongooseCache;
 }
 
-const MONGODB_URI = "mongodb://localhost:27017/school-bills";
+const MONGODB_URI = "mongodb+srv://kfc-school-bills:kayodefilani_123@cluster0.u3ihnqh.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 // Initialize the global mongoose cache if it doesn't exist
 if (!global.mongoose) {
